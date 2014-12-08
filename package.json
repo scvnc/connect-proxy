@@ -27,5 +27,8 @@
     "mocha": "~1.21.4",
     "connect": "~3.2.0",
     "serve-static": "~1.6.3"
+  },
+  "dependencies": {
+    "replacestream": "^1.0.2"
   }
 }

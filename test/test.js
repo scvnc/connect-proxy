@@ -91,6 +91,56 @@ describe("proxy", function() {
     });
   });
 
+  it("can make replacements the body response.", function(done) {
+
+      var destBody = "Hello, you can go to https://example.com/api/entity " +
+        "to get more crap.";
+
+      var replBody = "Hello, you can go to http://localhost:8002/api/entity " +
+        "to get more scaffolding.";
+
+      var destServer = createServerWithLibName('http', function(req, resp) {
+          resp.statusCode = 200;
+          resp.write(destBody);
+          resp.end();
+      });
+
+      // arrange options
+      var proxyOptions = url.parse('http://localhost:8129/');
+      proxyOptions.bodyReplacements = [
+          {
+              search: "https://example.com/api",
+              replace: "http://localhost:8002/api"
+          },
+          {
+              search: "crap",
+              replace: "scaffolding"
+          }
+      ];
+      proxyOptions.route = '/foo';
+
+      var app = connect();
+      app.use(serveStatic(path.resolve('.')));
+      app.use(proxy(proxyOptions));
+
+      destServer.listen(8129, 'localhost', function() {
+          app.listen(8128);
+          http.get('http://localhost:8128/foo/test/', function(res) {
+              var data = '';
+              res.on('data', function (chunk) {
+                  data += chunk;
+              });
+              res.on('end', function () {
+                  assert.strictEqual(data, replBody);
+                  destServer.close();
+                  done();
+              });
+          }).on('error', function () {
+              assert.fail('Request proxy failed');
+          });
+      });
+  });
+
   it("can proxy an exact url.", function(done) {
     var destServer = createServerWithLibName('http', function(req, resp) {
       resp.statusCode = 200;

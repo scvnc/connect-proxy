@@ -1,6 +1,7 @@
 var os = require('os');
 var http = require('http');
 var https = require('https');
+var replaceStream = require('replacestream');
 var owns = {}.hasOwnProperty;
 
 module.exports = function proxyMiddleware(options) {
@@ -10,6 +11,7 @@ module.exports = function proxyMiddleware(options) {
   options = options || {};
   options.hostname = options.hostname;
   options.port = options.port;
+  options.bodyReplacements = options.bodyReplacements || [];
 
   return function (req, resp, next) {
     var url = req.url;
@@ -51,16 +53,27 @@ module.exports = function proxyMiddleware(options) {
       myRes.on('error', function (err) {
         next(err);
       });
+
+      // pipe the response of the proxy through replaceStream(s)
+      options.bodyReplacements.forEach(function (repl) {
+        myRes = myRes.pipe(
+          replaceStream(repl.search, repl.replace)
+        );
+      });
+
       myRes.pipe(resp);
     });
+
     myReq.on('error', function (err) {
       next(err);
     });
+
     if (!req.readable) {
       myReq.end();
     } else {
       req.pipe(myReq);
     }
+
   };
 };
 
